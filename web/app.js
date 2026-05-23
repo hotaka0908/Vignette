@@ -257,15 +257,100 @@ async function showVideo(fname) {
     content.innerHTML = `
       <div class="player-wrap">
         <video controls autoplay playsinline src="${url}"></video>
+        <button id="share-btn" class="share-btn" type="button" aria-label="共有">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+            <polyline points="16 6 12 2 8 6"></polyline>
+            <line x1="12" y1="2" x2="12" y2="15"></line>
+          </svg>
+        </button>
       </div>
       <div class="player-meta">
         <div>${formatVideoTitle(fname)}</div>
         <a class="dl" href="${url}" download>↓ ダウンロード</a>
       </div>
+      <div class="share-status" id="share-status" aria-live="polite"></div>
     `;
+    wireShareButton(url, fname);
   } catch (e) {
     content.innerHTML = `<div class="error">${e.message}</div>`;
   }
+}
+
+function wireShareButton(url, fname) {
+  const btn = document.getElementById("share-btn");
+  const status = document.getElementById("share-status");
+  btn.addEventListener("click", () => shareVideo(btn, status, url, fname));
+}
+
+async function shareVideo(btn, status, url, fname) {
+  status.className = "share-status";
+  status.textContent = "";
+  btn.disabled = true;
+  const safeName = fname.replace(/[^a-z0-9._-]/gi, "_");
+  const title = "Vignette — ライフログ動画";
+  const text = "今日のライフログから生成した15秒動画です";
+
+  // 1) Preferred path on iOS/Android: share the video file itself via OS share sheet,
+  // which exposes TikTok / Instagram / X / LINE / etc.
+  if (typeof navigator.share === "function" && typeof navigator.canShare === "function") {
+    try {
+      status.textContent = "動画を読み込み中…";
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const file = new File([blob], safeName, { type: blob.type || "video/mp4" });
+      const shareData = { files: [file], title, text };
+      if (navigator.canShare(shareData)) {
+        status.textContent = "";
+        await navigator.share(shareData);
+        flash(status, "ok", "共有シートを開きました");
+        return;
+      }
+    } catch (e) {
+      if (e.name === "AbortError") {
+        flash(status, "", "");  // user cancelled, no error
+        return;
+      }
+      // fall through to URL share / clipboard
+    }
+  }
+
+  // 2) Fallback: share just the URL via the share sheet (some browsers).
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ url, title, text });
+      flash(status, "ok", "共有シートを開きました（リンクのみ）");
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") {
+        flash(status, "", "");
+        return;
+      }
+    }
+  }
+
+  // 3) Last resort: copy URL to clipboard.
+  try {
+    await navigator.clipboard.writeText(url);
+    flash(status, "ok", "リンクをコピーしました。共有先アプリで貼り付けてください。");
+  } catch (e) {
+    flash(status, "err", `共有に失敗: ${e.message}`);
+  }
+}
+
+function flash(el, kind, msg) {
+  el.className = "share-status" + (kind ? " " + kind : "");
+  el.textContent = msg;
+  if (msg) {
+    setTimeout(() => {
+      if (el.textContent === msg) {
+        el.textContent = "";
+        el.className = "share-status";
+      }
+    }, 4000);
+  }
+  const btn = document.getElementById("share-btn");
+  if (btn) btn.disabled = false;
 }
 
 // ---------- Navigation glue ----------
