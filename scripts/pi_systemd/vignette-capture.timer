@@ -1,9 +1,9 @@
 [Unit]
-Description=Trigger Vignette capture once per minute while session is active
+Description=Trigger Vignette capture every 30 seconds while session is active
 
 [Timer]
-OnBootSec=30s
-OnUnitInactiveSec=60s
+OnBootSec=15s
+OnUnitInactiveSec=30s
 AccuracySec=1s
 Unit=vignette-capture.service
 
