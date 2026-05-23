@@ -16,3 +16,4 @@ data/upload.log
 firebase-credentials.json
 .idea/
 .vscode/
+.vercel

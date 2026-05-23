@@ -56,14 +56,46 @@ async function showSessionList() {
       content.innerHTML = `<div class="empty">セッションがまだありません。<br>ボタンを押してライフログを開始してください。</div>`;
       return;
     }
+    // Render skeleton list immediately so the page feels fast,
+    // then fill in thumbnails + counts in parallel as each session's listing completes.
     content.innerHTML = `<ul class="sessions">${sessionIds.map(id => `
-      <li><a href="?session=${encodeURIComponent(id)}">
-        <span>${formatSession(id)}</span>
-        <span class="count">→</span>
+      <li data-id="${id}"><a href="?session=${encodeURIComponent(id)}">
+        <div class="thumb-wrap"><div class="thumb-placeholder"></div></div>
+        <div class="meta">
+          <div class="title">${formatSession(id)}</div>
+          <div class="count">読み込み中…</div>
+        </div>
+        <div class="chev">›</div>
       </a></li>`).join("")}</ul>`;
+    await Promise.all(sessionIds.map(id => hydrateSessionCard(id)));
   } catch (e) {
     content.innerHTML = `<div class="error">${e.message}</div>`;
   }
+}
+
+async function hydrateSessionCard(id) {
+  const li = document.querySelector(`li[data-id="${CSS.escape(id)}"]`);
+  if (!li) return;
+  try {
+    const items = await listSessionPhotos(id);
+    const count = items.length;
+    li.querySelector(".count").textContent = count > 0 ? `${count} 枚` : "写真なし";
+    if (count > 0) {
+      const first = items[0];
+      const url = downloadUrl(first.name, first.downloadTokens || "");
+      const wrap = li.querySelector(".thumb-wrap");
+      wrap.innerHTML = `<img src="${url}" alt="" loading="lazy">`;
+    }
+  } catch (e) {
+    li.querySelector(".count").textContent = "読み込み失敗";
+  }
+}
+
+async function listSessionPhotos(id) {
+  const data = await listPrefix(`sessions/${id}/`);
+  return (data.items || [])
+    .filter(it => it.name.toLowerCase().endsWith(".jpg"))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 async function showSession(id) {
