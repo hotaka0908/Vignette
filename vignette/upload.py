@@ -52,3 +52,28 @@ def upload_session(
         uploaded.append(object_path)
         log.info("uploaded %s -> gs://%s/%s", p.name, bucket, object_path)
     return uploaded
+
+
+def upload_one(
+    photo_path: Path,
+    session_id: str,
+    credentials_path: str,
+    bucket: str,
+) -> str:
+    """Upload a single photo to gs://<bucket>/sessions/<session_id>/<photo_name>.
+    Returns the object path. Idempotent — re-uploads overwrite.
+    """
+    if not photo_path.exists():
+        raise UploadError(f"photo not found: {photo_path}")
+    if not Path(credentials_path).exists():
+        raise UploadError(f"credentials JSON not found at {credentials_path}")
+
+    _ensure_app(credentials_path, bucket)
+    from firebase_admin import storage
+
+    sb = storage.bucket()
+    object_path = f"sessions/{session_id}/{photo_path.name}"
+    blob = sb.blob(object_path)
+    blob.upload_from_filename(str(photo_path), content_type="image/jpeg")
+    log.info("uploaded %s -> gs://%s/%s", photo_path.name, bucket, object_path)
+    return object_path

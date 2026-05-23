@@ -9,7 +9,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from . import capture, session_state, sounds
+from . import capture, session_state, sounds, upload
 from .config import load
 
 log = logging.getLogger("vignette.tick")
@@ -48,6 +48,23 @@ def main() -> int:
     except Exception as e:
         log.exception("capture failed: %s", e)
         return 3
+
+    # Real-time upload — best-effort. If it fails the photo stays on disk and the
+    # session-stop catch-up upload (or a manual upload_cli run) can retry it later.
+    if cfg.firebase_credentials and cfg.firebase_bucket:
+        try:
+            upload.upload_one(
+                photo_path=out,
+                session_id=sess.session_id,
+                credentials_path=cfg.firebase_credentials,
+                bucket=cfg.firebase_bucket,
+            )
+        except upload.UploadError as e:
+            log.warning("real-time upload failed (will retry on session stop): %s", e)
+        except Exception as e:
+            log.warning("real-time upload error (will retry on session stop): %s", e)
+    else:
+        log.info("Firebase not configured; skipping real-time upload")
     return 0
 
 
