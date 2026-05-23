@@ -29,6 +29,12 @@ def _start_session(cfg) -> str:
         cfg, session_state.ActiveSession(session_id=sid, started_at=time.time())
     )
     log.info("STARTED session %s -> %s", sid, photos)
+    # Fire one capture immediately so even short sessions produce a photo,
+    # and so users see feedback that the button was registered.
+    subprocess.Popen(
+        [sys.executable, "-m", "vignette.tick"],
+        cwd=str(Path(__file__).resolve().parent.parent),
+    )
     return sid
 
 
