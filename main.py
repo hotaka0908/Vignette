@@ -1,12 +1,5 @@
-"""Vignette entrypoint — stub. Replace with real app logic once idea is set."""
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-def main() -> None:
-    print("Vignette: hello from main.py — push-to-reflect test marker A1B2C3")
-
+"""Vignette entrypoint — capture lifelog photos, analyze with Gemini, generate video prompt."""
+from vignette.cli import run
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run())
