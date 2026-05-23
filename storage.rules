@@ -1,0 +1,19 @@
+// Firebase Storage rules for Vignette.
+// Apply via Firebase Console → Storage → Rules → paste & Publish.
+//
+// - Anyone can READ files under sessions/  (so the static web viewer can list+show them).
+// - Nobody can WRITE except the service account used by the Pi (service accounts bypass rules).
+// - Anything outside sessions/ is locked down.
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /sessions/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
