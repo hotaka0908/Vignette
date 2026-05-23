@@ -5,7 +5,7 @@ load_dotenv()
 
 
 def main() -> None:
-    print("Vignette: hello from main.py")
+    print("Vignette: hello from main.py — push-to-reflect test marker A1B2C3")
 
 
 if __name__ == "__main__":
