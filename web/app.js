@@ -116,11 +116,58 @@ async function showSession(id) {
         <div class="stamp">${stamp}</div>
       </a>`;
     });
-    content.innerHTML = `<div class="grid">${fragments.join("")}</div>${lightboxHtml()}`;
+    content.innerHTML = `
+      <div class="grid">${fragments.join("")}</div>
+      ${generateButtonHtml(id, items.length)}
+      ${lightboxHtml()}
+    `;
     wireLightbox();
+    wireGenerateButton(id);
   } catch (e) {
     content.innerHTML = `<div class="error">${e.message}</div>`;
   }
+}
+
+function generateButtonHtml(id, count) {
+  return `
+    <section class="generate">
+      <button id="generate-btn" type="button">
+        <span class="label">▶ 動画を生成 (${count}枚から)</span>
+      </button>
+      <div class="status" id="generate-status" aria-live="polite"></div>
+    </section>
+  `;
+}
+
+function wireGenerateButton(sid) {
+  const btn = document.getElementById("generate-btn");
+  const status = document.getElementById("generate-status");
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    btn.querySelector(".label").textContent = "送信中…";
+    status.textContent = "";
+    status.className = "status";
+    try {
+      const r = await fetch(`/api/process?sid=${encodeURIComponent(sid)}`, { method: "POST" });
+      const bodyText = (await r.text()).trim();
+      if (r.ok) {
+        status.className = "status ok";
+        status.textContent = `生成リクエスト送信完了 ✓${bodyText ? " — " + bodyText : ""}`;
+        btn.querySelector(".label").textContent = "✓ 送信済み (もう一度生成)";
+        btn.disabled = false;
+      } else {
+        status.className = "status err";
+        status.textContent = `エラー ${r.status}: ${bodyText || "(empty response)"}`;
+        btn.querySelector(".label").textContent = "▶ 動画を生成 (再試行)";
+        btn.disabled = false;
+      }
+    } catch (e) {
+      status.className = "status err";
+      status.textContent = `通信エラー: ${e.message}`;
+      btn.querySelector(".label").textContent = "▶ 動画を生成 (再試行)";
+      btn.disabled = false;
+    }
+  });
 }
 
 function lightboxHtml() {

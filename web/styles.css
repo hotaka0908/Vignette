@@ -123,6 +123,40 @@ ul.sessions a:active { background: #161616; }
   padding: 48px 16px;
 }
 
+.generate {
+  margin: 24px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+#generate-btn {
+  appearance: none;
+  border: none;
+  background: linear-gradient(180deg, #4a8cff 0%, #2a6bdf 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 14px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 2px 12px rgba(74,140,255,0.25);
+  transition: transform 0.05s ease, opacity 0.2s ease;
+}
+#generate-btn:active { transform: scale(0.985); }
+#generate-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.status {
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+  min-height: 1.2em;
+}
+.status.ok  { color: #6fcf97; }
+.status.err { color: #ff7676; }
+
 #lightbox {
   position: fixed;
   inset: 0;
