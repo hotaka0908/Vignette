@@ -15,7 +15,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from . import session_state
+from . import session_state, sounds
 from .config import load
 
 log = logging.getLogger("vignette.button")
@@ -73,8 +73,10 @@ def main() -> None:
         existing = session_state.read(cfg)
         if existing:
             _stop_session(cfg, existing.session_id)
+            sounds.play_stop()
         else:
             _start_session(cfg)
+            sounds.play_start()
 
     button.when_pressed = on_press
 
