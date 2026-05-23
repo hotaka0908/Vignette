@@ -9,7 +9,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from . import capture, session_state
+from . import capture, session_state, sounds
 from .config import load
 
 log = logging.getLogger("vignette.tick")
@@ -41,6 +41,7 @@ def main() -> int:
         if src.exists() and src != out:
             src.rename(out)
         log.info("captured %s (session=%s)", out.name, sess.session_id)
+        sounds.play_shutter()
     except capture.CameraUnavailable as e:
         log.error("camera unavailable: %s", e)
         return 2
