@@ -5,10 +5,11 @@ import os
 import numpy as np
 import sounddevice as sd
 
-SAMPLE_RATE = 44100
+SAMPLE_RATE = int(os.environ.get("SAMPLE_RATE", "48000"))  # USB DAC often requires 48000
 FREQ = 440
 SECONDS = 1.0
-DEVICE = os.environ.get("AUDIO_OUTPUT_DEVICE")
+# Default to ALSA card 2 (UACDemoV1.0 USB speaker) — index 0 in sounddevice list
+DEVICE = os.environ.get("AUDIO_OUTPUT_DEVICE", "0")
 
 
 def _device_arg():
