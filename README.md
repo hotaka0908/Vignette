@@ -1,4 +1,4 @@
-# Goggleio
+# Vignette
 
 Raspberry Pi hackathon project — camera + mic + speaker + GPIO.
 Develop on Mac, deploy to Pi over Tailscale.
@@ -7,7 +7,7 @@ Develop on Mac, deploy to Pi over Tailscale.
 
 - Host (Tailscale MagicDNS): `raspberrypi.tailed10f0.ts.net`
 - User: `hotaka`
-- Path: `/home/hotaka/goggleio`
+- Path: `/home/hotaka/vignette`
 - Existing `raspi-voice7` / `ai-necklace.service` is untouched
 
 ## Quick start
