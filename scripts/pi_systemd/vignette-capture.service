@@ -1,0 +1,9 @@
+[Unit]
+Description=Vignette one-shot capture tick
+
+[Service]
+Type=oneshot
+User=hotaka
+WorkingDirectory=/home/hotaka/vignette
+EnvironmentFile=-/home/hotaka/vignette/.env
+ExecStart=/home/hotaka/vignette/venv/bin/python -m vignette.tick

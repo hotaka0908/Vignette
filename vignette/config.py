@@ -19,6 +19,11 @@ class Config:
     photos_dir: Path
     analysis_dir: Path
     prompts_dir: Path
+    # Lifelog daemon settings
+    button_gpio: int
+    capture_interval_sec: int
+    firebase_credentials: str | None
+    firebase_bucket: str | None
 
 
 def load() -> Config:
@@ -34,4 +39,8 @@ def load() -> Config:
         photos_dir=DATA_DIR / "photos",
         analysis_dir=DATA_DIR / "analysis",
         prompts_dir=DATA_DIR / "prompts",
+        button_gpio=int(os.environ.get("VIGNETTE_BUTTON_GPIO", "5")),
+        capture_interval_sec=int(os.environ.get("VIGNETTE_CAPTURE_INTERVAL_SEC", "60")),
+        firebase_credentials=os.environ.get("VIGNETTE_FIREBASE_CREDENTIALS"),
+        firebase_bucket=os.environ.get("VIGNETTE_FIREBASE_BUCKET"),
     )

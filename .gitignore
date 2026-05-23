@@ -11,5 +11,8 @@ recordings/
 data/photos/
 data/analysis/
 data/prompts/
+data/state.json
+data/upload.log
+firebase-credentials.json
 .idea/
 .vscode/
