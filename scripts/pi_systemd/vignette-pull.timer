@@ -1,0 +1,11 @@
+[Unit]
+Description=Run vignette-pull every 5 seconds
+
+[Timer]
+OnBootSec=15s
+OnUnitInactiveSec=5s
+AccuracySec=1s
+Unit=vignette-pull.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Pull latest Vignette code from GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hotaka
+WorkingDirectory=/home/hotaka/vignette
+ExecStart=/usr/bin/env bash -c '\
+  OLD=$(git rev-parse HEAD); \
+  git fetch --quiet origin main && git reset --hard --quiet origin/main; \
+  NEW=$(git rev-parse HEAD); \
+  if [ "$OLD" != "$NEW" ]; then echo "vignette-pull: $OLD -> $NEW"; fi'
