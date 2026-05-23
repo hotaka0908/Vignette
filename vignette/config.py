@@ -24,6 +24,9 @@ class Config:
     capture_interval_sec: int
     firebase_credentials: str | None
     firebase_bucket: str | None
+    # Orchestrator notify hook (POST /process/<sid> after a successful upload)
+    orchestrator_url: str | None
+    api_key: str | None
 
 
 def load() -> Config:
@@ -43,4 +46,6 @@ def load() -> Config:
         capture_interval_sec=int(os.environ.get("VIGNETTE_CAPTURE_INTERVAL_SEC", "60")),
         firebase_credentials=os.environ.get("VIGNETTE_FIREBASE_CREDENTIALS"),
         firebase_bucket=os.environ.get("VIGNETTE_FIREBASE_BUCKET"),
+        orchestrator_url=os.environ.get("VIGNETTE_ORCHESTRATOR_URL"),
+        api_key=os.environ.get("VIGNETTE_API_KEY"),
     )
