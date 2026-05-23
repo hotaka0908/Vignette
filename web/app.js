@@ -1,48 +1,89 @@
 // Vignette web viewer — pure static, no Firebase SDK.
-// Lists sessions/<id>/img_*.jpg from Firebase Storage via its public REST API.
-// Requires the storage bucket to allow unauthenticated read of paths under /sessions/.
+// Lists sessions/<id>/img_*.jpg and videos/*.mp4 from Firebase Storage via its
+// public REST API. Requires the storage bucket to allow unauthenticated read
+// of those paths (see ../storage.rules).
 
 const BUCKET = "vignette-life-b4515.firebasestorage.app";
-
 const API = `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o`;
+const VIDEO_PREFIX = "videos/";
 
 const content = document.getElementById("content");
 const back = document.getElementById("back");
 const title = document.getElementById("title");
 const refreshBtn = document.getElementById("refresh");
+const navLinks = document.querySelectorAll("#bottom-nav a");
 
 refreshBtn.addEventListener("click", () => route());
 window.addEventListener("popstate", () => route());
+
+// Intercept nav clicks so the page doesn't full-reload between tabs.
+navLinks.forEach(a => {
+  a.addEventListener("click", e => {
+    e.preventDefault();
+    const url = new URL(a.href, location.origin);
+    if (location.search !== url.search) {
+      history.pushState(null, "", url.pathname + url.search);
+      route();
+    }
+  });
+});
 
 route();
 
 function route() {
   const params = new URLSearchParams(location.search);
+  const tab = params.get("tab") || "photos";
   const sid = params.get("session");
-  if (sid) {
-    back.hidden = false;
-    title.textContent = formatSession(sid);
-    showSession(sid);
+  const videoName = params.get("video");
+  setActiveTab(tab);
+
+  if (tab === "videos") {
+    if (videoName) {
+      back.hidden = false;
+      back.setAttribute("href", "?tab=videos");
+      title.textContent = formatVideoTitle(videoName);
+      showVideo(videoName);
+    } else {
+      back.hidden = true;
+      title.textContent = "動画";
+      showVideoList();
+    }
   } else {
-    back.hidden = true;
-    title.textContent = "Vignette";
-    showSessionList();
+    if (sid) {
+      back.hidden = false;
+      back.setAttribute("href", "?tab=photos");
+      title.textContent = formatSession(sid);
+      showSession(sid);
+    } else {
+      back.hidden = true;
+      title.textContent = "ライフログ";
+      showSessionList();
+    }
   }
 }
+
+function setActiveTab(tab) {
+  navLinks.forEach(a => {
+    a.classList.toggle("active", a.dataset.tab === tab);
+  });
+}
+
+// ---------- Storage REST helpers ----------
 
 async function listPrefix(prefix, delimiter = "/") {
   const url = `${API}?prefix=${encodeURIComponent(prefix)}&delimiter=${encodeURIComponent(delimiter)}`;
   const r = await fetch(url);
   if (!r.ok) {
-    throw new Error(`Storage list failed (${r.status}). Check storage.rules — sessions/ must allow public read.`);
+    throw new Error(`Storage list failed (${r.status}). Check storage.rules — the path must allow public read.`);
   }
   return r.json();
 }
 
 function downloadUrl(name, token) {
-  // name is the encoded object path like "sessions%2F2026-05-24_041237%2Fimg_001.jpg"
   return `${API}/${encodeURIComponent(name)}?alt=media&token=${token}`;
 }
+
+// ---------- Photos: session list ----------
 
 async function showSessionList() {
   content.innerHTML = `<p class="muted">セッション一覧を読み込み中…</p>`;
@@ -56,10 +97,8 @@ async function showSessionList() {
       content.innerHTML = `<div class="empty">セッションがまだありません。<br>ボタンを押してライフログを開始してください。</div>`;
       return;
     }
-    // Render skeleton list immediately so the page feels fast,
-    // then fill in thumbnails + counts in parallel as each session's listing completes.
     content.innerHTML = `<ul class="sessions">${sessionIds.map(id => `
-      <li data-id="${id}"><a href="?session=${encodeURIComponent(id)}">
+      <li data-id="${id}"><a href="?tab=photos&session=${encodeURIComponent(id)}" data-nav="session">
         <div class="thumb-wrap"><div class="thumb-placeholder"></div></div>
         <div class="meta">
           <div class="title">${formatSession(id)}</div>
@@ -67,6 +106,7 @@ async function showSessionList() {
         </div>
         <div class="chev">›</div>
       </a></li>`).join("")}</ul>`;
+    wireInternalLinks();
     await Promise.all(sessionIds.map(id => hydrateSessionCard(id)));
   } catch (e) {
     content.innerHTML = `<div class="error">${e.message}</div>`;
@@ -83,8 +123,7 @@ async function hydrateSessionCard(id) {
     if (count > 0) {
       const first = items[0];
       const url = downloadUrl(first.name, first.downloadTokens || "");
-      const wrap = li.querySelector(".thumb-wrap");
-      wrap.innerHTML = `<img src="${url}" alt="" loading="lazy">`;
+      li.querySelector(".thumb-wrap").innerHTML = `<img src="${url}" alt="" loading="lazy">`;
     }
   } catch (e) {
     li.querySelector(".count").textContent = "読み込み失敗";
@@ -98,12 +137,12 @@ async function listSessionPhotos(id) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// ---------- Photos: single session ----------
+
 async function showSession(id) {
   content.innerHTML = `<p class="muted">写真を読み込み中…</p>`;
   try {
-    const data = await listPrefix(`sessions/${id}/`);
-    const items = (data.items || []).filter(it => it.name.toLowerCase().endsWith(".jpg"));
-    items.sort((a, b) => a.name.localeCompare(b.name));
+    const items = await listSessionPhotos(id);
     if (items.length === 0) {
       content.innerHTML = `<div class="empty">このセッションには写真がありません。</div>`;
       return;
@@ -170,6 +209,78 @@ function wireGenerateButton(sid) {
   });
 }
 
+// ---------- Videos ----------
+
+async function showVideoList() {
+  content.innerHTML = `<p class="muted">動画を読み込み中…</p>`;
+  try {
+    const data = await listPrefix(VIDEO_PREFIX);
+    const items = (data.items || [])
+      .filter(it => /\.(mp4|webm|mov)$/i.test(it.name))
+      .sort((a, b) => b.name.localeCompare(a.name));  // newest first by filename
+    if (items.length === 0) {
+      content.innerHTML = `<div class="empty">
+        動画がまだありません。<br>
+        写真タブからセッションを開き、「▶ 動画を生成」を押してください。
+      </div>`;
+      return;
+    }
+    content.innerHTML = `<ul class="videos">${items.map(it => {
+      const fname = it.name.replace(/^videos\//, "");
+      const url = downloadUrl(it.name, it.downloadTokens || "");
+      const sizeMb = it.size ? (Number(it.size) / 1024 / 1024).toFixed(1) + " MB" : "";
+      return `<li><a href="?tab=videos&video=${encodeURIComponent(fname)}" data-nav="video">
+        <div class="thumb-wrap video-thumb"><video src="${url}#t=0.5" muted playsinline preload="metadata"></video><div class="play-overlay">▶</div></div>
+        <div class="meta">
+          <div class="title">${formatVideoTitle(fname)}</div>
+          <div class="count">${sizeMb}</div>
+        </div>
+        <div class="chev">›</div>
+      </a></li>`;
+    }).join("")}</ul>`;
+    wireInternalLinks();
+  } catch (e) {
+    content.innerHTML = `<div class="error">${e.message}</div>`;
+  }
+}
+
+async function showVideo(fname) {
+  content.innerHTML = `<p class="muted">動画を読み込み中…</p>`;
+  try {
+    const objectName = VIDEO_PREFIX + fname;
+    // We need the downloadToken — fetch the metadata for this single object.
+    const metaUrl = `${API}/${encodeURIComponent(objectName)}`;
+    const r = await fetch(metaUrl);
+    if (!r.ok) throw new Error(`動画情報の取得に失敗 (${r.status})`);
+    const meta = await r.json();
+    const url = downloadUrl(objectName, meta.downloadTokens || "");
+    content.innerHTML = `
+      <div class="player-wrap">
+        <video controls autoplay playsinline src="${url}"></video>
+      </div>
+      <div class="player-meta">
+        <div>${formatVideoTitle(fname)}</div>
+        <a class="dl" href="${url}" download>↓ ダウンロード</a>
+      </div>
+    `;
+  } catch (e) {
+    content.innerHTML = `<div class="error">${e.message}</div>`;
+  }
+}
+
+// ---------- Navigation glue ----------
+
+function wireInternalLinks() {
+  document.querySelectorAll("a[data-nav]").forEach(a => {
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      const url = new URL(a.href, location.origin);
+      history.pushState(null, "", url.pathname + url.search);
+      route();
+    });
+  });
+}
+
 function lightboxHtml() {
   return `<div id="lightbox"><button class="close" aria-label="閉じる">✕</button><img alt=""></div>`;
 }
@@ -189,15 +300,22 @@ function wireLightbox() {
   box.addEventListener("click", e => { if (e.target === box) box.classList.remove("open"); });
 }
 
+// ---------- Formatting ----------
+
 function formatSession(id) {
-  // sessions/2026-05-24_041237 → 2026-05-24 04:12:37
   const m = id.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})(\d{2})$/);
   return m ? `${m[1]}  ${m[2]}:${m[3]}:${m[4]}` : id;
 }
 
 function extractTime(objectPath) {
-  // sessions/<id>/img_HHMMSS.jpg or img_001.jpg
   const fname = objectPath.split("/").pop();
   const m = fname.match(/^img_(\d{2})(\d{2})(\d{2})\.jpg$/);
   return m ? `${m[1]}:${m[2]}:${m[3]}` : fname;
+}
+
+function formatVideoTitle(fname) {
+  // videos/2026-05-24_055333.mp4 → 2026-05-24  05:53:33
+  const base = fname.replace(/\.[a-z0-9]+$/i, "");
+  const m = base.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})(\d{2})$/);
+  return m ? `${m[1]}  ${m[2]}:${m[3]}:${m[4]}` : base;
 }
